@@ -23,11 +23,43 @@ jobs:
         run: git remote add upstream https://github.com/df-mc/dragonfly.git
 
       - name: Fetch upstream
-        run: git fetch upstream
+        run: git fetch upstream --tags
+
+      - name: Get latest upstream tag
+        id: latest_tag
+        run: echo "LATEST_TAG=$(git ls-remote --tags --refs upstream | sort -t '/' -k 3 -V | tail -n 1 | awk -F/ '{print $3}')" >> $GITHUB_OUTPUT
 
       - name: Merge upstream/master
         id: merge
-        run: git merge --no-edit upstream/master || echo "Merge conflict, skipping push."
+        run: |
+          # Store the old commit hash for comparison
+          OLD_HASH=$(git rev-parse HEAD)
+
+          # Try to merge
+          git merge --no-edit upstream/master || echo "Merge conflict, skipping push."
+
+          # Store the new commit hash for comparison
+          NEW_HASH=$(git rev-parse HEAD)
+
+          # Set output to indicate if changes were made
+          if [ "$OLD_HASH" != "$NEW_HASH" ]; then
+            echo "CHANGES_MADE=true" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGES_MADE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get current commit hash
+        id: current_hash
+        if: steps.merge.outputs.CHANGES_MADE == 'true'
+        run: echo "SHORT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        if: steps.merge.outputs.CHANGES_MADE == 'true'
+        run: |
+          NEW_TAG="${{ steps.latest_tag.outputs.LATEST_TAG }}-${{ steps.current_hash.outputs.SHORT_HASH }}"
+          git tag $NEW_TAG
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $NEW_TAG
+          echo "Created and pushed tag: $NEW_TAG"
 
       - name: Push changes
         if: success() && !contains(steps.merge.outputs.result, 'conflict')
