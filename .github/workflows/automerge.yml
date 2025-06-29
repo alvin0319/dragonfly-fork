@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Git user
         run: |
@@ -26,11 +26,10 @@ jobs:
         run: git fetch upstream
 
       - name: Merge upstream/master
+        id: merge
         run: git merge --no-edit upstream/master || echo "Merge conflict, skipping push."
 
       - name: Push changes
         if: success() && !contains(steps.merge.outputs.result, 'conflict')
         run: |
-          git push origin HEAD:master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:master
