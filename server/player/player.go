@@ -1656,9 +1656,6 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	)
 
 	ctx := event.C(p)
-	if p.Handler().HandleAttackEntity(ctx, e, &force, &height, &critical); ctx.Cancelled() {
-		return false
-	}
 	p.SwingArm()
 
 	i, _ := p.HeldItems()
@@ -1679,6 +1676,9 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 	if critical {
 		dmg *= 1.5
+	}
+	if p.Handler().HandleAttackEntity(ctx, e, &dmg, &force, &height, &critical); ctx.Cancelled() {
+		return false
 	}
 
 	n, vulnerable := living.Hurt(dmg, entity.AttackDamageSource{Attacker: p})
