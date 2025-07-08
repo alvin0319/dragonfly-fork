@@ -55,13 +55,13 @@ jobs:
 
       - name: Create and push tag
         if: steps.merge.outputs.CHANGES_MADE == 'true'
+        with:
+          token: ${{ secrets.TOKEN }}
         run: |
           NEW_TAG="${{ steps.latest_tag.outputs.LATEST_TAG }}-${{ steps.current_hash.outputs.SHORT_HASH }}"
           git tag $NEW_TAG
           git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $NEW_TAG
           echo "Created and pushed tag: $NEW_TAG"
-        with:
-          token: ${{ secrets.TOKEN }}
 
       - name: Push changes
         if: success() && !contains(steps.merge.outputs.result, 'conflict')
